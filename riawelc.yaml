@@ -1,0 +1,13 @@
+# RIAWELC Weld Defect Dataset
+path: data/processed   # relative to project root
+
+train: train
+val:   val
+test:  test
+
+nc: 4  # number of classes
+names:
+  0: CR    # Crack
+  1: LP    # Lack of Penetration
+  2: PO    # Porosity
+  3: ND    # No Defect
