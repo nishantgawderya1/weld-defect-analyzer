@@ -1,0 +1,20 @@
+# Dataset - not commiting dataset folder
+data/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# YOLO runs output
+runs/
+
+# Models
+models/
+*.pt
+*.onnx
+
+# OS
+.DS_Store
+Thumbs.db
