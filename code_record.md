@@ -3,19 +3,22 @@
 This document tracks the changes and progress made on the **Weld Defect Analyzer** project.
 
 ## Project Overview
-The goal of this project is to analyze weld defects using machine learning (likely computer vision, given the dependencies).
+The goal of this project is to analyze weld defects using deep learning computer vision models (specifically YOLOv8 classification) and provide interactive quality assurance tools for industrial radiographic inspections.
 
 ## Current Project Structure
-- `data/`: Placeholder for dataset.
-- `models/`: Placeholder for trained models.
-- `notebooks/`: For experimental code.
+- `data/`: Processed datasets with standard `train`, `val`, and `test` splits matching YOLO classification guidelines.
+- `models/`: Placeholder for trained model standalone exports.
+- `notebooks/`: For experimental research and prototyping.
 - `src/`: Core source code.
-    - `prepare_dataset.py`: Script to organize and copy raw data to `data/processed/`.
-    - `preprocess.py`: (Empty) Planned for data preprocessing.
-    - `train.py`: (Empty) Planned for model training.
-    - `predict.py`: (Empty) Planned for inference/prediction.
-- `requirements.txt`: Project dependencies (includes `torch`, `ultralytics`, `opencv`, `mlflow`, etc.).
-- `README.md`: Project documentation (currently empty).
+    - `prepare_dataset.py`: Script that automated the migration of 24k raw images to the processed workspace.
+    - `train.py`: Script setting up parameters to train the YOLOv8-cls model for 50 epochs.
+    - `predict.py`: Core inference engine wrapping YOLO classification probabilities and mapping predictions to international compliance standards.
+    - `app.py`: High-end Streamlit web dashboard for live NDT inspection and performance analytics.
+- `requirements.txt`: Project dependencies (includes `torch`, `ultralytics`, `streamlit`, `pandas`, `opencv-python`, etc.).
+- `riawelc.yaml`: Configuration metadata listing the 4 defect classes: `CR` (Crack), `LP` (Lack of Penetration), `PO` (Porosity), `ND` (No Defect).
+- `README.md`: Complete, professional project setup and metallurgical reference documentation.
+
+---
 
 ## Work History
 
@@ -39,5 +42,23 @@ The goal of this project is to analyze weld defects using machine learning (like
 - **Environment Setup**: Initialized project directory and structure.
 - **Dependency Management**: Populated `requirements.txt` with necessary libraries for computer vision and ML lifecycle management.
 
+### 2026-05-26 & 2026-05-27
+- **Model Verification**: Verified completed classification model training run (`weld_v1`) producing weight outputs:
+  * Best weights: `runs/classify/runs/classify/weld_v1/weights/best.pt`
+  * Static evaluation assets: `confusion_matrix_normalized.png`, `results.csv`, `results.png`, and `val_batch0_pred.jpg`.
+- **Modular Prediction Core (`src/predict.py`)**:
+  * Implemented `WeldPredictor` class.
+  * Formatted predictions to return custom color-coded alert labels, severity classifications, and custom engineering action recommendations linked to international quality codes (**ISO 5817**, **ASME**, and **AWS**).
+- **Interactive Web Interface (`src/app.py`)**:
+  * Created a multi-tab Streamlit dashboard themed around a premium industrial smart-factory slate layout.
+  * **Playground Tab**: Drag-and-drop file uploader, dynamic validation test sample loader (automatically resolves and displays test set images for evaluation), custom CSS glowing severity alert cards, and inline progress indicators matching classification codes.
+  * **Analytics Tab**: Parses training metrics from `results.csv` on the fly to plot dynamic loss tracks and validation accuracy lines alongside normalized confusion matrices and prediction sample boards.
+  * **Methodology Tab**: Documented metallurgical definitions, physical causes of weld defects, and code reference compliance checklists.
+- **Project Documentation (`README.md`)**:
+  * Formulated full readme documentation covering architecture, defect thresholds, virtual environment instructions, and execution processes.
+- **System Compatibility & Deployment**:
+  * Overcame Windows System32 stub path blocking by explicitly configuring and executing Git from Program Files: `C:\Program Files\Git\cmd\git.exe`.
+  * Staged, committed, and successfully pushed all active dashboard and prediction files to the remote repository: `https://github.com/nishantgawderya1/weld-defect-analyzer.git` on branch `main`.
+
 ---
-*Last updated: 2026-04-26*
+*Last updated: 2026-05-27*
