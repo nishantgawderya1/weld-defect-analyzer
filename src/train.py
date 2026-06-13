@@ -3,12 +3,12 @@ import os
 
 # ── CONFIG ──────────────────────────────────────────────
 MODEL      = "yolov8n-cls.pt"   # nano = fast; swap to yolov8s-cls.pt for better accuracy
-DATA_PATH  = os.path.abspath("data/processed")
+DATA_PATH  = os.path.abspath("data/preprocessed")
 EPOCHS     = 50
 IMG_SIZE   = 224
 BATCH      = 16
 PROJECT    = "runs/classify"
-RUN_NAME   = "weld_v1"
+RUN_NAME   = "weld_v2_preprocessed"
 # ────────────────────────────────────────────────────────
 
 def train():

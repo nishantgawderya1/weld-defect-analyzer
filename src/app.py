@@ -119,14 +119,29 @@ st.markdown(
 
 # ── INITIALIZE MODEL ─────────────────────────────────────────────
 @st.cache_resource
-def load_predictor():
+def load_predictor(model_version):
     try:
-        return WeldPredictor()
+        if model_version == "Preprocessed Model (weld_v2)":
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            paths = [
+                os.path.join(base_dir, "runs", "classify", "runs", "classify", "weld_v2_preprocessed", "weights", "best.pt"),
+                os.path.join(base_dir, "runs", "classify", "weld_v2_preprocessed", "weights", "best.pt")
+            ]
+            model_path = None
+            for p in paths:
+                if os.path.exists(p):
+                    model_path = p
+                    break
+            
+            if model_path is None:
+                st.sidebar.warning("⚠️ Preprocessed Model weights not found. Using Baseline.")
+                return WeldPredictor()
+            return WeldPredictor(model_path=model_path)
+        else:
+            return WeldPredictor()
     except Exception as e:
         st.error(f"⚠️ Model Initialization Failed: {e}")
         return None
-
-predictor = load_predictor()
 
 # ── HELPER: GET DYNAMIC TEST SAMPLE IMAGES ────────────────────────
 def get_sample_image(class_code):
@@ -172,14 +187,26 @@ page = st.sidebar.radio(
 )
 st.sidebar.markdown("---")
 
+# Model selector in the sidebar
+st.sidebar.markdown("### ⚙️ SYSTEM SETTINGS")
+selected_model_ver = st.sidebar.selectbox(
+    "Select Model Version",
+    ["Baseline Model (weld_v1)", "Preprocessed Model (weld_v2)"]
+)
+st.sidebar.markdown("---")
+
+predictor = load_predictor(selected_model_ver)
+
 # Sidebar Info Card
+model_display_name = "weld_v1 (Baseline)" if selected_model_ver == "Baseline Model (weld_v1)" else "weld_v2 (Preprocessed)"
 st.sidebar.markdown(
-    """
+    f"""
     <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">
         <strong style="color: #f8fafc;">System Status:</strong> <span style="color: #10b981;">🟢 ACTIVE</span><br>
         <strong style="color: #f8fafc;">Hardware Target:</strong> PyTorch (CPU)<br>
         <strong style="color: #f8fafc;">Model Class:</strong> YOLOv8n-cls<br>
-        <strong style="color: #f8fafc;">Version:</strong> v1.0.0
+        <strong style="color: #f8fafc;">Active Model:</strong> {model_display_name}<br>
+        <strong style="color: #f8fafc;">Version:</strong> {"v1.0.0" if selected_model_ver == "Baseline Model (weld_v1)" else "v1.1.0"}
     </div>
     """,
     unsafe_allow_html=True
@@ -190,6 +217,7 @@ if page == "🔬 Inspection Playground":
     st.markdown("### 🔬 Live Radiograph Analysis Panel")
     st.markdown("Upload a new weld X-ray image or load one of our industrial validation test samples to watch the deep learning model run real-time inference.")
     
+    show_xai = False
     col_input, col_result = st.columns([2, 3], gap="large")
     
     with col_input:
@@ -252,6 +280,9 @@ if page == "🔬 Inspection Playground":
             st.markdown("##### 🔍 Input Radiograph Preview")
             img = Image.open(selected_img_path)
             st.image(img, use_column_width=True, caption=f"Source: {os.path.basename(selected_img_path)}")
+            
+            st.markdown("---")
+            show_xai = st.checkbox("🧠 Show Explainable AI (XAI) Saliency Map", value=False, help="Enable to visualize the attention heatmap of the neural network on the weld joint.")
             
     with col_result:
         st.markdown("#### ⚡ AI Defect Diagnostic Engine")
@@ -346,6 +377,30 @@ if page == "🔬 Inspection Playground":
                                 """,
                                 unsafe_allow_html=True
                             )
+                            
+                        # Explainable AI (XAI) Grad-CAM Heatmap
+                        if show_xai:
+                            st.markdown("---")
+                            st.markdown("#### 🧠 Neural Diagnostic Saliency Map (Grad-CAM)")
+                            st.markdown(
+                                "This saliency heatmap highlights the specific local features and regions of interest "
+                                "that the deep learning model focused on to make its diagnosis."
+                            )
+                            with st.spinner("🧠 Generating Grad-CAM diagnostic heatmap..."):
+                                try:
+                                    # Create temporary path for Grad-CAM output
+                                    temp_gradcam_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "temp", "gradcam"))
+                                    os.makedirs(temp_gradcam_dir, exist_ok=True)
+                                    gradcam_path = os.path.join(temp_gradcam_dir, f"gradcam_{os.path.basename(selected_img_path)}")
+                                    
+                                    # Generate Grad-CAM image
+                                    predictor.generate_gradcam(selected_img_path, output_path=gradcam_path)
+                                    
+                                    # Display Grad-CAM image
+                                    gradcam_img = Image.open(gradcam_path)
+                                    st.image(gradcam_img, use_column_width=True, caption=f"Grad-CAM Heatmap overlay (Class: {pred['class_name']})")
+                                except Exception as e_cam:
+                                    st.error(f"Failed to generate Grad-CAM visualization: {e_cam}")
                             
                     except Exception as ex:
                         st.error(f"Inference pipeline error: {ex}")

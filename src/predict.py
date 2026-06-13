@@ -2,6 +2,21 @@ from ultralytics import YOLO
 import os
 import torch
 
+class YOLOClassifierWrapper(torch.nn.Module):
+    """
+    A lightweight wrapper around the YOLOv8 PyTorch model 
+    to ensure standard tensor forward pass for Grad-CAM.
+    """
+    def __init__(self, yolo_model):
+        super().__init__()
+        self.pytorch_model = yolo_model.model
+        
+    def forward(self, x):
+        res = self.pytorch_model(x)
+        if isinstance(res, tuple):
+            return res[0]
+        return res
+
 class WeldPredictor:
     def __init__(self, model_path=None):
         """
@@ -117,8 +132,87 @@ class WeldPredictor:
             class_code = model_names.get(idx, f"CLASS_{idx}")
             class_name = self.class_details.get(class_code, {}).get("name", class_code)
             prediction["all_probabilities"][class_name] = float(score)
-            
         return prediction
+
+    def generate_gradcam(self, image_path, output_path=None):
+        """
+        Generates a Grad-CAM heatmap overlay for the predicted class.
+        If output_path is provided, saves it there.
+        Returns the overlayed image as a numpy array in BGR format.
+        """
+        import cv2
+        import numpy as np
+        
+        try:
+            from pytorch_grad_cam import GradCAM
+            from pytorch_grad_cam.utils.image import show_cam_on_image
+        except ImportError:
+            raise ImportError(
+                "The 'pytorch-grad-cam' library is required for explainable AI heatmaps. "
+                "Please install it using: pip install grad-cam"
+            )
+        
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Target image not found at: {image_path}")
+            
+        # Run inference first to get prediction details
+        pred = self.predict(image_path)
+        class_code = pred["class_code"]
+        confidence = pred["confidence"]
+        
+        # Mapping class code to index (CR:0, LP:1, PO:2, ND:3)
+        class_idx_map = {"CR": 0, "LP": 1, "PO": 2, "ND": 3}
+        target_idx = class_idx_map.get(class_code, 3)
+        
+        # Load and resize image for model (224x224)
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image at: {image_path}")
+        image_resized = cv2.resize(image, (224, 224))
+        rgb_img = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB) / 255.0
+        
+        # Convert to torch tensor
+        input_tensor = torch.from_numpy(rgb_img.transpose(2, 0, 1)).unsqueeze(0).float()
+        
+        # Wrap model and enable grad on parameters
+        wrapper = YOLOClassifierWrapper(self.model)
+        for param in wrapper.pytorch_model.parameters():
+            param.requires_grad = True
+            
+        wrapper.eval()
+        
+        # Target layer is the last convolutional block before classification head
+        target_layers = [wrapper.pytorch_model.model[-2]]
+        
+        # Generate GradCAM activations
+        with torch.enable_grad():
+            cam = GradCAM(model=wrapper, target_layers=target_layers)
+            grayscale_cam = cam(input_tensor=input_tensor, targets=None)[0]
+            
+        # Overlay heatmap
+        visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
+        output_img = cv2.cvtColor(visualization, cv2.COLOR_RGB2BGR)
+        
+        # Add labels on the image
+        label_text = f"{pred['class_name']} ({confidence*100:.1f}%)"
+        cv2.putText(
+            output_img, 
+            label_text, 
+            (10, 30), 
+            cv2.FONT_HERSHEY_SIMPLEX, 
+            0.6, 
+            (0, 255, 0), 
+            2, 
+            cv2.LINE_AA
+        )
+        
+        if output_path:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+            cv2.imwrite(output_path, output_img)
+            
+        return output_img
+
+
 
 if __name__ == "__main__":
     # Test script if run directly
