@@ -83,6 +83,54 @@ The application will open automatically in your browser at **[http://localhost:8
 
 ---
 
+## 🌐 Deploying to the Web (Streamlit Community Cloud)
+
+Put the dashboard online for free in a few minutes. No server or DevOps knowledge needed.
+
+### Step 1 — Push your code to GitHub
+Make sure your latest changes (including the trained model weights) are on the `main` branch:
+```powershell
+git add -A
+git push origin main
+```
+> The model file `best.pt` is normally ignored by Git. It has already been **force-added** so the cloud app can load it. If you train a new model, add it the same way:
+> `git add -f runs/classify/<run_name>/weights/best.pt`
+
+### Step 2 — Create the app
+1. Go to **[share.streamlit.io](https://share.streamlit.io)** and sign in with GitHub.
+2. Click **Create app → Deploy a public app from GitHub**.
+3. Fill in:
+   * **Repository:** `nishantgawderya1/weld-defect-analyzer`
+   * **Branch:** `main`
+   * **Main file path:** `src/app.py`
+
+### Step 3 — ⚠️ Set the Python version (most important!)
+Before clicking deploy, open **Advanced settings** and set:
+
+* **Python version → `3.12`**
+
+> **Why this matters:** This project uses `torch` and `ultralytics`, which **do not have installers for Python 3.13 or 3.14 yet**. If you leave the default (newer) version, the build fails with `No matching distribution found`. Python **3.12** is the safe choice.
+
+### Step 4 — Deploy
+Click **Deploy**. The first build takes a few minutes (it downloads PyTorch). When it finishes, your app is live at a public `*.streamlit.app` URL. 🎉
+
+### Updating the live app
+Just `git push` to `main` — Streamlit redeploys automatically. If the app misbehaves after an update, open **Manage app → ⋮ → Reboot app** for a clean restart.
+
+---
+
+## 🩹 Troubleshooting
+
+| Symptom | Cause | Fix |
+| :--- | :--- | :--- |
+| `No matching distribution found for pywin32` / build fails resolving dependencies | `requirements.txt` had Windows-only / unneeded packages | Already fixed — `requirements.txt` is now a minimal Linux-friendly list. Keep it lean; don't paste a full `pip freeze` into it. |
+| `Could not find a version that satisfies torch` | Cloud is using Python **3.13/3.14** (no PyTorch wheels) | Set **Python version → 3.12** in Advanced settings, then reboot. |
+| `WeldPredictor.__init__() got an unexpected keyword argument 'apply_preprocessing'` | The app is running **old code still cached in memory** (Streamlit reruns `app.py` but does not reload imported modules) | Fully **restart** the process: locally press `Ctrl+C` and run `streamlit run src/app.py` again; on Cloud use **Reboot app**. A browser "Rerun" is not enough. |
+| `Model predictor not initialized` / `best.pt not found` | The model weights aren't in the deployed repo | Force-add the weights and push: `git add -f runs/classify/<run_name>/weights/best.pt`. |
+| App runs but crashes when loading a model | Free tier memory limit (~1 GB); PyTorch + YOLO is heavy | Reboot; if it persists, stick to the lightweight `yolov8n-cls` model (already the default). |
+
+---
+
 ## 📊 Model Training & Performance
 The model was trained utilizing a **YOLOv8 Nano Classifier** (`yolov8n-cls`) for **50 epochs** with an input size of **224x224 pixels** and mini-batch sizes of **16**.
 
