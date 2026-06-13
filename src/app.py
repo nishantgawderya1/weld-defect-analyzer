@@ -136,7 +136,8 @@ def load_predictor(model_version):
             if model_path is None:
                 st.sidebar.warning("⚠️ Preprocessed Model weights not found. Using Baseline.")
                 return WeldPredictor()
-            return WeldPredictor(model_path=model_path)
+            # v2 was trained on CLAHE+denoise images, so inputs must be preprocessed too.
+            return WeldPredictor(model_path=model_path, apply_preprocessing=True)
         else:
             return WeldPredictor()
     except Exception as e:

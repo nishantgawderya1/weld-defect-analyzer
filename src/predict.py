@@ -18,11 +18,17 @@ class YOLOClassifierWrapper(torch.nn.Module):
         return res
 
 class WeldPredictor:
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, apply_preprocessing=False):
         """
         Initializes the Weld Defect Predictor.
         Default path points to the best weights trained.
+
+        apply_preprocessing: if True, run the CLAHE + denoise pipeline on every
+        input before inference. Required for the weld_v2 model, which was trained
+        on preprocessed images — feeding it raw images causes train/serve skew.
+        Leave False for weld_v1 (trained on raw images).
         """
+        self.apply_preprocessing = apply_preprocessing
         if model_path is None:
             # Resolve default path to best.pt
             model_path = os.path.abspath(os.path.join(
@@ -88,6 +94,24 @@ class WeldPredictor:
             }
         }
 
+    def _resolve_input(self, image_path):
+        """
+        Returns (path_to_infer, is_temp). When apply_preprocessing is on, applies
+        the CLAHE + denoise pipeline and writes the result to a temp file so the
+        model sees the same distribution it was trained on. Caller must delete the
+        temp file when is_temp is True.
+        """
+        if not self.apply_preprocessing:
+            return image_path, False
+        import cv2
+        import tempfile
+        from preprocess import preprocess_image
+        processed = preprocess_image(image_path)
+        fd, tmp_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        cv2.imwrite(tmp_path, processed)
+        return tmp_path, True
+
     def predict(self, image_path):
         """
         Runs model inference on the provided image path.
@@ -95,10 +119,18 @@ class WeldPredictor:
         """
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Target image not found at: {image_path}")
-            
-        results = self.model(image_path, verbose=False)
+
+        infer_path, is_temp = self._resolve_input(image_path)
+        try:
+            results = self.model(infer_path, verbose=False)
+        finally:
+            if is_temp:
+                try:
+                    os.remove(infer_path)
+                except OSError:
+                    pass
         result = results[0]
-        
+
         # Parse probabilities
         probs = result.probs
         top1_idx = int(probs.top1)
@@ -155,22 +187,31 @@ class WeldPredictor:
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Target image not found at: {image_path}")
             
-        # Run inference first to get prediction details
+        # Run inference first to get prediction details (handles preprocessing internally)
         pred = self.predict(image_path)
         class_code = pred["class_code"]
         confidence = pred["confidence"]
-        
+
         # Mapping class code to index (CR:0, LP:1, PO:2, ND:3)
         class_idx_map = {"CR": 0, "LP": 1, "PO": 2, "ND": 3}
         target_idx = class_idx_map.get(class_code, 3)
-        
-        # Load and resize image for model (224x224)
-        image = cv2.imread(image_path)
+
+        # Load and resize the SAME image the model sees (preprocessed for v2) so the
+        # heatmap aligns with the activations.
+        infer_path, is_temp = self._resolve_input(image_path)
+        try:
+            image = cv2.imread(infer_path)
+        finally:
+            if is_temp:
+                try:
+                    os.remove(infer_path)
+                except OSError:
+                    pass
         if image is None:
             raise ValueError(f"Could not load image at: {image_path}")
         image_resized = cv2.resize(image, (224, 224))
         rgb_img = cv2.cvtColor(image_resized, cv2.COLOR_BGR2RGB) / 255.0
-        
+
         # Convert to torch tensor
         input_tensor = torch.from_numpy(rgb_img.transpose(2, 0, 1)).unsqueeze(0).float()
         
