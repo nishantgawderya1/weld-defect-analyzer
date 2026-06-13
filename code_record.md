@@ -60,5 +60,32 @@ The goal of this project is to analyze weld defects using deep learning computer
   * Overcame Windows System32 stub path blocking by explicitly configuring and executing Git from Program Files: `C:\Program Files\Git\cmd\git.exe`.
   * Staged, committed, and successfully pushed all active dashboard and prediction files to the remote repository: `https://github.com/nishantgawderya1/weld-defect-analyzer.git` on branch `main`.
 
+### 2026-06-13
+- **Explainability & Model Versioning (commit `b053518`)**:
+  * Added **Grad-CAM XAI heatmaps** to `src/predict.py` (`pytorch-grad-cam`) for visual defect localization.
+  * Added a **model-version selector** to `src/app.py` (Baseline `weld_v1` vs Preprocessed `weld_v2`).
+- **Preprocessing Pipeline (`src/preprocess.py`)**:
+  * Implemented **CLAHE** (local contrast) + **non-local-means denoising** to clean radiographic film grain.
+  * Outputs a parallel dataset at `data/preprocessed/` mirroring `data/processed/`.
+- **v2 Training Scripts**:
+  * `src/train.py` — trains `weld_v2_preprocessed` (YOLOv8n-cls, 50 epochs) on the preprocessed set.
+  * `src/resume_train.py` — resume helper (now superseded by the GPU workflow below).
+- **Streamlit Cloud Deployment Fix**:
+  * Replaced the Windows `pip freeze` `requirements.txt` (which carried `pywin32` + ~110 unused dev packages and broke Linux dependency resolution) with a **minimal, Linux-friendly set** of only the 9 packages the app imports; swapped `opencv-python` → `opencv-python-headless`.
+  * **Action required in the Streamlit dashboard:** set Python version to **3.12** (torch/ultralytics have no 3.14 wheels) and reboot.
+
 ---
-*Last updated: 2026-05-27*
+
+## Outstanding / What's Left
+
+- **`weld_v2_preprocessed` is NOT yet trained** — this is the only real gap. The app's "Preprocessed Model (weld_v2)" selector errors until `runs/classify/weld_v2_preprocessed/weights/best.pt` exists.
+  * **Decision (2026-06-13):** train on a **free GPU** (Colab/Kaggle T4) — ~1–2 h for 50 epochs vs ~71 h on this CPU. CPU resume was rejected (poor ROI + YOLO's resume flag tends to ignore a lowered epoch cap).
+  * **How (preferred — Kaggle):** run `notebooks/train_weld_v2_kaggle.ipynb` — attach RIAWELC as a Kaggle Dataset (upload once, reused free; no Drive), GPU = On, Internet = On, run cells, download `weld_v2_best.zip` from the Output tab.
+  * **How (alt — Colab):** run `notebooks/train_weld_v2_colab.ipynb` (zip `DB - Copy` → upload to Drive → run cells → download `weld_v2_best.zip`).
+  * Either way, unzip to `runs/classify/weld_v2_preprocessed/weights/best.pt`.
+- **Dataset is local-only** — `data/` and `runs/` are gitignored. Raw RIAWELC (24,407 imgs: 15,863 train / 6,101 val / 2,443 test) lives at `C:\Users\nisha\Downloads\DB - Copy`; `data/processed` in the repo holds only 4 committed test samples.
+- **To deploy v2 on Streamlit Cloud**, force-add the weight (`git add -f .../weld_v2_preprocessed/weights/best.pt`) since `*.pt` is gitignored.
+- **Known quirk:** training previously nested runs as `runs/classify/runs/classify/<name>`; the app's `load_predictor` checks both that and the clean `runs/classify/<name>` path.
+
+---
+*Last updated: 2026-06-13*
