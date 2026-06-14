@@ -1,3 +1,14 @@
+---
+title: Weld Inspection AI
+emoji: 🔬
+colorFrom: blue
+colorTo: gray
+sdk: streamlit
+sdk_version: 1.40.0
+app_file: src/app.py
+pinned: false
+---
+
 # 🔬 Weld Defect Radiographic Inspector
 
 A deep-learning-powered computer vision system designed for Non-Destructive Testing (NDT) and Quality Assurance (QA). It utilizes a customized **YOLOv8** classification model to analyze radiographic (X-ray) weld images, automatically identifying structural defects and providing actionable, standard-compliant engineering recommendations.
