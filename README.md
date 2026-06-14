@@ -1,15 +1,25 @@
----
-title: Weld Inspection AI
-emoji: 🔬
-colorFrom: blue
-colorTo: gray
-sdk: streamlit
-sdk_version: 1.40.0
-app_file: src/app.py
-pinned: false
----
+<div align="center">
 
 # 🔬 Weld Defect Radiographic Inspector
+
+### AI-Powered Non-Destructive Testing for Industrial Weld Quality Assurance
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/YOLOv8-Ultralytics-0B23A9?style=for-the-badge&logo=yolo&logoColor=white" alt="YOLOv8">
+  <img src="https://img.shields.io/badge/OpenCV-Computer%20Vision-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white" alt="OpenCV">
+  <img src="https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit">
+  <a href="https://huggingface.co/spaces/nishant-online-cf/weld-inspection-ai">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Live%20Demo-FFD21E?style=for-the-badge" alt="Hugging Face Spaces">
+  </a>
+</p>
+
+**[🚀 Live Demo](https://huggingface.co/spaces/nishant-online-cf/weld-inspection-ai)** &nbsp;·&nbsp; **[⚙️ Getting Started](#-getting-started)** &nbsp;·&nbsp; **[🧠 Model & Performance](#-model-training--performance)**
+
+</div>
+
+---
 
 A deep-learning-powered computer vision system designed for Non-Destructive Testing (NDT) and Quality Assurance (QA). It utilizes a customized **YOLOv8** classification model to analyze radiographic (X-ray) weld images, automatically identifying structural defects and providing actionable, standard-compliant engineering recommendations.
 
