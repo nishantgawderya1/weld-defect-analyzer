@@ -4,9 +4,6 @@ import pandas as pd
 from PIL import Image
 import numpy as np
 
-# Import predictor module
-from predict import WeldPredictor
-
 # ── PAGE CONFIGURATION ──────────────────────────────────────────
 st.set_page_config(
     page_title="Weld Defect Analyzer • Radiographic Inspection Dashboard",
@@ -14,6 +11,44 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ── GUARDED PREDICTOR IMPORT (TEMPORARY DIAGNOSTIC) ─────────────
+# Streamlit Cloud redacts uncaught exceptions, which hides the real reason
+# `import cv2` fails inside ultralytics. Catching it here lets the page render
+# the actual message plus an environment probe. Delete this block and restore
+# the plain `from predict import WeldPredictor` once the deploy is healthy.
+try:
+    from predict import WeldPredictor
+except Exception:
+    import ctypes.util
+    import importlib.metadata as md
+    import platform
+    import traceback
+
+    st.error("Predictor import failed. Full diagnostic below — send this to debug the deploy.")
+
+    st.markdown("#### Real traceback (unredacted)")
+    st.code(traceback.format_exc(), language="text")
+
+    st.markdown("#### Environment probe")
+    probe = [f"python           : {platform.python_version()}"]
+
+    opencv_dists = sorted(
+        f"{d.metadata['Name']}=={d.version}"
+        for d in md.distributions()
+        if "opencv" in (d.metadata["Name"] or "").lower()
+    )
+    probe.append(f"opencv installed : {opencv_dists or 'NONE'}")
+    probe.append(f"libGL found      : {ctypes.util.find_library('GL') or 'NOT FOUND (packages.txt did not apply)'}")
+
+    for mod in ("numpy", "cv2", "torch", "ultralytics"):
+        try:
+            probe.append(f"{mod:17}: {__import__(mod).__version__} OK")
+        except Exception as err:
+            probe.append(f"{mod:17}: FAILED -> {type(err).__name__}: {err}")
+
+    st.code("\n".join(probe), language="text")
+    st.stop()
 
 # ── BESPOKE MODERN CSS INJECTION ───────────────────────────────
 st.markdown(
