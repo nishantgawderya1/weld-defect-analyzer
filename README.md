@@ -64,6 +64,7 @@ The system classifies weld anomalies into four core categories, matching their i
 │   ├── prepare_dataset.py # Automated raw data migrator and class mapping utility
 │   └── train.py           # Model training config script
 ├── requirements.txt       # Project dependencies (Torch, Ultralytics, Streamlit, etc.)
+├── packages.txt           # System (apt) libs needed by OpenCV on Linux cloud hosts
 ├── riawelc.yaml           # Dataset configuration and class map definitions
 └── README.md              # Project documentation
 ```
@@ -144,6 +145,7 @@ Just `git push` to `main` — Streamlit redeploys automatically. If the app misb
 
 | Symptom | Cause | Fix |
 | :--- | :--- | :--- |
+| `ImportError` traced to `import cv2` inside `ultralytics/utils/__init__.py` | `ultralytics` pulls in **`opencv-python`** (non-headless) as its own dependency, which installs alongside our `opencv-python-headless` and overwrites the shared `cv2/` libs. The non-headless build needs `libGL.so.1`, absent from the slim cloud image. | Already fixed — `packages.txt` at the repo root installs `libgl1` and `libglib2.0-0` via apt before pip runs. Keep that file; deleting it brings the error back. |
 | `No matching distribution found for pywin32` / build fails resolving dependencies | `requirements.txt` had Windows-only / unneeded packages | Already fixed — `requirements.txt` is now a minimal Linux-friendly list. Keep it lean; don't paste a full `pip freeze` into it. |
 | `Could not find a version that satisfies torch` | Cloud is using Python **3.13/3.14** (no PyTorch wheels) | Set **Python version → 3.12** in Advanced settings, then reboot. |
 | `WeldPredictor.__init__() got an unexpected keyword argument 'apply_preprocessing'` | The app is running **old code still cached in memory** (Streamlit reruns `app.py` but does not reload imported modules) | Fully **restart** the process: locally press `Ctrl+C` and run `streamlit run src/app.py` again; on Cloud use **Reboot app**. A browser "Rerun" is not enough. |

@@ -1,1 +1,5 @@
 *.pt filter=lfs diff=lfs merge=lfs -text
+
+# Deploy configs read by Linux cloud hosts - must stay LF or apt/pip fail to parse
+packages.txt text eol=lf
+requirements.txt text eol=lf
