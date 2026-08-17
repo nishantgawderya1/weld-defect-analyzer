@@ -5,7 +5,11 @@ streamlit>=1.40,<2
 ultralytics>=8.3,<9
 torch>=2.2
 torchvision>=0.17
-opencv-python-headless>=4.9
+# NOTE: do NOT add opencv-python-headless here. ultralytics depends on
+# opencv-python, and both distributions unpack into the same cv2/ directory --
+# pip overwrites them file-by-file, leaving a mixed install that fails to
+# import. We let ultralytics pull the one opencv it wants; packages.txt
+# supplies the libGL/glib system libs that build needs.
 pillow>=10.0
 numpy>=1.26,<3
 pandas>=2.1
